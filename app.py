@@ -67,14 +67,20 @@ def index():
 
 @app.route('/video_feed', methods=['POST'])
 def video_feed():
+    def video_feed():
     global latest_frame
-    # Read the frame from the request
-    file = request.files['file']
-    np_img = np.frombuffer(file.read(), np.uint8)
-    img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+    try:
+        # Read the frame from the request
+        file = request.files['file']
+        np_img = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
-    # Process the frame
-    process_frame(img)
+        # Process the frame
+        process_frame(img)
+
+        app.logger.info("Frame received and processed successfully")
+    except Exception as e:
+        app.logger.error(f"Error processing frame: {e}")
 
     return "Frame received and processed"
 
