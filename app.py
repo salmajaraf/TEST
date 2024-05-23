@@ -2,9 +2,21 @@ from flask import Flask, render_template_string, Response, request
 import cv2
 import numpy as np
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 import PoseModule as pm
 
 app = Flask(__name__)
+
+# Set up logging
+if not app.debug:
+    file_handler = RotatingFileHandler('flask.log', maxBytes=10240, backupCount=10)
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    file_handler.setFormatter(formatter)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Flask startup')
 
 # Initialize pose detector
 detector = pm.poseDetector()
@@ -67,7 +79,6 @@ def index():
 
 @app.route('/video_feed', methods=['POST'])
 def video_feed():
-    def video_feed():
     global latest_frame
     try:
         # Read the frame from the request
