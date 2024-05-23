@@ -7,10 +7,10 @@ import PoseModule as pm
 app = Flask(__name__)
 
 # URL of the video stream
-#url = "http://10.41.109.9:4040/video"
+url = "http://192.168.12.20:4040/video"
 
 # Open the video stream
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(url)
 
 # Initialize pose detector
 detector = pm.poseDetector()
