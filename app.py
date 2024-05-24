@@ -27,6 +27,9 @@ def video_feed():
         np_img = np.frombuffer(file.read(), np.uint8)
         img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
+        # Log the size of the received image data
+        print("Received image data size:", len(np_img), "bytes")
+
         # Process the frame
         (h, w) = img.shape[:2]
         img = detector.findPose(img, False)
@@ -65,6 +68,9 @@ def video_feed():
 
     except Exception as e:
         response_data["feedback"] = f"Error: {e}"
+
+    # Log the response data
+    print("Sending response:", response_data)
 
     return jsonify(response_data)
 
