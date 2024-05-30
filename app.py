@@ -1,12 +1,48 @@
-from flask import Flask, request, jsonify, send_from_directory
 import cv2
 import numpy as np
-import base64
-import PoseModule as pm
+import mediapipe as mp
+from flask import Flask, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
-detector = pm.poseDetector()
+class poseDetector:
+    def __init__(self, mode=False, complexity=1, smooth=True, detectionCon=0.5, trackCon=0.5):
+        self.mode = mode
+        self.complexity = complexity
+        self.smooth = smooth
+        self.detectionCon = detectionCon
+        self.trackCon = trackCon
+
+        self.mpDraw = mp.solutions.drawing_utils
+        self.mpPose = mp.solutions.pose
+        self.pose = self.mpPose.Pose(
+            static_image_mode=self.mode,
+            model_complexity=self.complexity,
+            smooth_landmarks=self.smooth,
+            min_detection_confidence=self.detectionCon,
+            min_tracking_confidence=self.trackCon
+        )
+
+    def findPose(self, img, draw=True):
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        self.results = self.pose.process(imgRGB)
+        if self.results.pose_landmarks:
+            if draw:
+                self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
+        return img
+
+    def findPosition(self, img, draw=True):
+        self.lmList = []
+        if self.results.pose_landmarks:
+            for id, lm in enumerate(self.results.pose_landmarks.landmark):
+                h, w, c = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                self.lmList.append([id, cx, cy])
+                if draw:
+                    cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
+        return self.lmList
+
+detector = poseDetector()
 
 @app.route('/')
 def index():
@@ -14,41 +50,16 @@ def index():
 
 @app.route('/process_frame', methods=['POST'])
 def process_frame():
-    file = request.files['frame']
-    img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
+    file = request.files['frame'].read()
+    npimg = np.frombuffer(file, np.uint8)
+    img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
     
-    img = detector.findPose(img, False)
-    lmList = detector.findPosition(img, False)
+    img = detector.findPose(img, draw=True)
+    lmList = detector.findPosition(img, draw=False)
     
-    count, dir = 0, 0
-    if lmList:
-        angle = detector.findAngle(img, 12, 14, 16)
-        per = np.interp(angle, (210, 310), (0, 100))
-        bar = np.interp(per, (0, 100), (650, 100))
-
-        color = (255, 0, 255)
-        if per == 100:
-            color = (0, 255, 0)
-            if dir == 0:
-                count += 0.5
-                dir = 1
-        if per == 0:
-            color = (0, 255, 0)
-            if dir == 1:
-                count += 0.5
-                dir = 0
-
-        cv2.rectangle(img, (1100, 100), (1175, 650), color, 3)
-        cv2.rectangle(img, (1100, int(bar)), (1175, 650), color, cv2.FILLED)
-        cv2.putText(img, f'{int(per)}%', (1100, 75), cv2.FONT_HERSHEY_PLAIN, 4, color, 4)
-
-        cv2.rectangle(img, (0, 450), (250, 720), (0, 255, 0), cv2.FILLED)
-        cv2.putText(img, str(int(count)), (45, 670), cv2.FONT_HERSHEY_PLAIN, 15, (255, 0, 0), 25)
-
     _, buffer = cv2.imencode('.jpg', img)
-    encoded_frame = base64.b64encode(buffer).decode('utf-8')
+    img_str = buffer.tobytes()
+    return jsonify({'processed_frame': img_str.decode('latin1'), 'count': len(lmList)})
 
-    return jsonify({'processed_frame': encoded_frame, 'count': count})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run()
