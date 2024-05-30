@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import cv2
 import numpy as np
 import time
@@ -23,7 +23,7 @@ def process_frame():
         return jsonify({'error': 'No frame provided'}), 400
 
     frame = request.files['frame'].read()
-    npimg = np.fromstring(frame, np.uint8)
+    npimg = np.frombuffer(frame, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
     img = detector.findPose(img, False)
