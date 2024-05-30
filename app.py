@@ -5,8 +5,7 @@ import time
 import PoseModule as pm
 import base64
 
-app = Flask(__name__)
-detector = pm.poseDetector()
+app = Flask(__name__, template_folder=os.path.abspath(os.path.dirname(__file__)))detector = pm.poseDetector()
 count = 0
 dir = 0
 pTime = 0
