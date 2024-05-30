@@ -52,8 +52,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        const imgData = 'data:image/jpeg;base64,' + btoa(data.processed_frame);
-                        result.src = imgData;
+                        result.src = 'data:image/jpeg;base64,' + data.processed_frame;
                         countDisplay.innerText = 'Count: ' + data.count;
                     })
                     .catch(err => {
