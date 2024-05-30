@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import cv2
 import numpy as np
 import time
@@ -59,7 +59,6 @@ def process_frame():
     cTime = time.time()
     fps = 1 / (cTime - pTime)
     pTime = cTime
-    cv2.putText(img, str(int(fps)), (50, 100), cv2.FONT_HERSHEY_PLAIN, 5, (255, 0, 0), 5)
 
     _, buffer = cv2.imencode('.jpg', img)
     processed_frame = base64.b64encode(buffer).decode('utf-8')
