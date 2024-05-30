@@ -4,12 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Camera Stream</title>
+    <style>
+        #result {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <h1>Client Camera Stream</h1>
     <video id="video" width="640" height="480" autoplay></video>
+    <img id="result" width="640" height="480" />
+    <p id="count">Count: 0</p>
     <script>
         const video = document.getElementById('video');
+        const result = document.getElementById('result');
+        const countDisplay = document.getElementById('count');
 
         // Request access to the camera
         navigator.mediaDevices.getUserMedia({ video: true })
@@ -43,7 +52,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        console.log('Frame processed:', data);
+                        const imgData = 'data:image/jpeg;base64,' + btoa(data.processed_frame);
+                        result.src = imgData;
+                        countDisplay.innerText = 'Count: ' + data.count;
                     })
                     .catch(err => {
                         console.error('Error sending frame:', err);
