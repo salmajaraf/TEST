@@ -1,78 +1,78 @@
-from flask import Flask, request, Response, jsonify
 import cv2
 import numpy as np
 import time
 import PoseModule as pm
 
-app = Flask(__name__)
+# url = "http://192.168.11.104:4747/video"
+url = "curls1.mp4"
 
-# Initialize pose detector
+
+# Open the video stream
+cap = cv2.VideoCapture(url)
+
+# cap = cv2.VideoCapture(0)
+
 detector = pm.poseDetector()
 count = 0
 dir = 0
 pTime = 0
+while True:
+    success, img = cap.read()
+    # Get the dimensions of the frame
+    (h, w) = img.shape[:2]
 
-@app.route('/')
-def index():
-    return "Pose Detection Server is Running"
+    # center = (w / 2, h / 2)
+    # M = cv2.getRotationMatrix2D(center, 90, 1.0)
+    # img = cv2.warpAffine(img, M, (w, h))
 
-@app.route('/video_feed', methods=['POST'])
-def video_feed():
-    global count, dir, pTime
+    # # img = cv2.resize(img, (1280, 720))
+    # img = cv2.imread("img.png")
+    img = detector.findPose(img, False)
+    lmList = detector.findPosition(img)
+    # print(lmList)
+    if len(lmList) != 0:
+        # Right Arm
+        angle1 = detector.findAngle(img, 12, 14, 16)
+        # Left Arm
+        angle2 = detector.findAngle(img, 11, 13, 15)
+        per = np.interp(angle1, (50, 150), (0, 100))
+        bar = np.interp(angle1, (50, 140), (650, 100))
+        per2 = np.interp(angle2, (50, 150), (0, 100))
+        print(angle1, per)
+        print(bar)
 
-    response_data = {"percentage": 0, "feedback": "No data"}
-    try:
-        # Read the frame from the request
-        file = request.files['file']
-        np_img = np.frombuffer(file.read(), np.uint8)
-        img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+        # Check for the dumbbell curls
+        color = (255, 0, 255)
+        if 95 <= per <= 100 and 95 <= per2 <= 100 :
+            color = (0, 255, 0)
+            if dir == 0:
+                count += 0.5
+                dir = 1
+        if per <= 5 and per2 <= 5:
+            color = (0, 255, 0)
+            if dir == 1:
+                count += 0.5
+                dir = 0
+        print(count)
 
-        # Log the size of the received image data
-        print("Received image data size:", len(np_img), "bytes")
+        # Draw Bar
+        cv2.rectangle(img, (1100, 100), (w-60, h-20), color, 3)
+        cv2.rectangle(img, (1100, int(bar)), (w-60, h-20), color, cv2.FILLED)
+        cv2.putText(img, f'{int(per)} %', (w-120, 75), cv2.FONT_HERSHEY_PLAIN, 4,
+                    color, 4)
 
-        # Process the frame
-        (h, w) = img.shape[:2]
-        img = detector.findPose(img, False)
-        lmList = detector.findPosition(img)
+        # Draw Curl Count
+        cv2.rectangle(img, (0, 450), (250, 720), (0, 255, 0), cv2.FILLED)
+        cv2.putText(img, str(int(count)), (45, h-40), cv2.FONT_HERSHEY_PLAIN, 15,
+                    (255, 0, 0), 25)
 
-        feedback = ""
-        per = 0
+    cTime = time.time()
+    fps = 1 / (cTime - pTime)
+    pTime = cTime
+    cv2.putText(img, str(int(fps)), (50, 100), cv2.FONT_HERSHEY_PLAIN, 5,
+                (255, 0, 0), 5)
 
-        if len(lmList) != 0:
-            # Right Arm
-            angle1 = detector.findAngle(img, 12, 14, 16)
-            # Left Arm
-            angle2 = detector.findAngle(img, 11, 13, 15)
-            per = np.interp(angle1, (50, 150), (0, 100))
-            bar = np.interp(angle1, (50, 140), (650, 100))
-            per2 = np.interp(angle2, (50, 150), (0, 100))
-
-            color = (255, 0, 255)
-            if 95 <= per <= 100 and 95 <= per2 <= 100:
-                color = (0, 255, 0)
-                feedback = "Great! Keep it up!"
-                if dir == 0:
-                    count += 0.5
-                    dir = 1
-            elif per <= 5 and per2 <= 5:
-                color = (0, 255, 0)
-                feedback = "Nice! Almost there!"
-                if dir == 1:
-                    count += 0.5
-                    dir = 0
-            else:
-                feedback = "Keep going!"
-
-        response_data["percentage"] = per
-        response_data["feedback"] = feedback
-
-    except Exception as e:
-        response_data["feedback"] = f"Error: {e}"
-
-    # Log the response data
-    print("Sending response:", response_data)
-
-    return jsonify(response_data)
-
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0')
+    cv2.imshow("Image", img)
+    # cv2.waitKey(1)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
