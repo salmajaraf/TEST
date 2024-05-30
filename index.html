@@ -3,17 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Stream</title>
+    <title>Client Camera Stream</title>
 </head>
 <body>
-    <h1>Camera Stream</h1>
-    <video id="videoElement" autoplay></video>
-    <button id="startButton">Start</button>
-    <button id="stopButton">Stop</button>
-    <button id="uploadButton">Upload</button>
-
+    <h1>Client Camera Stream</h1>
+    <video id="video" width="640" height="480" autoplay></video>
     <script>
-        // JavaScript pour la capture vidéo et l'envoi au serveur Flask
+        const video = document.getElementById('video');
+
+        // Request access to the camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(err => {
+                console.error("Error accessing the camera: ", err);
+            });
+
+        // Capture and send the video stream to the server
+        video.addEventListener('play', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+
+            function sendFrame() {
+                if (video.paused || video.ended) {
+                    return;
+                }
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('frame', blob, 'frame.jpg');
+
+                    fetch('/process_frame', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Frame processed:', data);
+                    })
+                    .catch(err => {
+                        console.error('Error sending frame:', err);
+                    });
+
+                    setTimeout(sendFrame, 100); // Send frame every 100ms
+                }, 'image/jpeg');
+            }
+
+            sendFrame();
+        });
     </script>
 </body>
 </html>
