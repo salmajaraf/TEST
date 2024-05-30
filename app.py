@@ -4,6 +4,7 @@ import numpy as np
 import time
 import PoseModule as pm
 import base64
+import os
 
 app = Flask(__name__, template_folder=os.path.abspath(os.path.dirname(__file__)))
 detector = pm.poseDetector()
