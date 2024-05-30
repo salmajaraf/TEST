@@ -1,36 +1,33 @@
+from flask import Flask, request, jsonify, send_from_directory
 import cv2
 import numpy as np
 import time
 import PoseModule as pm
+from PIL import Image
+import io
 
-# url = "http://192.168.11.104:4747/video"
-url = 0
-
-
-# Open the video stream
-cap = cv2.VideoCapture(url)
-
-# cap = cv2.VideoCapture(0)
-
+app = Flask(__name__)
 detector = pm.poseDetector()
 count = 0
 dir = 0
 pTime = 0
-while True:
-    success, img = cap.read()
-    # Get the dimensions of the frame
-    (h, w) = img.shape[:2]
 
-    # center = (w / 2, h / 2)
-    # M = cv2.getRotationMatrix2D(center, 90, 1.0)
-    # img = cv2.warpAffine(img, M, (w, h))
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
 
-    # # img = cv2.resize(img, (1280, 720))
-    # img = cv2.imread("img.png")
+@app.route('/process_frame', methods=['POST'])
+def process_frame():
+    global count, dir, pTime
+    file = request.files['frame']
+    img = Image.open(file.stream)
+    img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
     img = detector.findPose(img, False)
     lmList = detector.findPosition(img)
-    # print(lmList)
-    if len(lmList) != 0:
+
+    result = {'count': count, 'angles': []}
+    if lmList:
         # Right Arm
         angle1 = detector.findAngle(img, 12, 14, 16)
         # Left Arm
@@ -38,12 +35,12 @@ while True:
         per = np.interp(angle1, (50, 150), (0, 100))
         bar = np.interp(angle1, (50, 140), (650, 100))
         per2 = np.interp(angle2, (50, 150), (0, 100))
-        print(angle1, per)
-        print(bar)
+
+        result['angles'] = [angle1, angle2]
 
         # Check for the dumbbell curls
         color = (255, 0, 255)
-        if 95 <= per <= 100 and 95 <= per2 <= 100 :
+        if 95 <= per <= 100 and 95 <= per2 <= 100:
             color = (0, 255, 0)
             if dir == 0:
                 count += 0.5
@@ -53,26 +50,10 @@ while True:
             if dir == 1:
                 count += 0.5
                 dir = 0
-        print(count)
 
-        # Draw Bar
-        cv2.rectangle(img, (1100, 100), (w-60, h-20), color, 3)
-        cv2.rectangle(img, (1100, int(bar)), (w-60, h-20), color, cv2.FILLED)
-        cv2.putText(img, f'{int(per)} %', (w-120, 75), cv2.FONT_HERSHEY_PLAIN, 4,
-                    color, 4)
+        result['count'] = count
 
-        # Draw Curl Count
-        cv2.rectangle(img, (0, 450), (250, 720), (0, 255, 0), cv2.FILLED)
-        cv2.putText(img, str(int(count)), (45, h-40), cv2.FONT_HERSHEY_PLAIN, 15,
-                    (255, 0, 0), 25)
+    return jsonify(result)
 
-    cTime = time.time()
-    fps = 1 / (cTime - pTime)
-    pTime = cTime
-    cv2.putText(img, str(int(fps)), (50, 100), cv2.FONT_HERSHEY_PLAIN, 5,
-                (255, 0, 0), 5)
-
-    cv2.imshow("Image", img)
-    # cv2.waitKey(1)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+if __name__ == '__main__':
+    app.run(debug=True)
