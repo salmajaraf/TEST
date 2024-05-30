@@ -5,22 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Camera Stream</title>
     <style>
+        #sidebar {
+            float: left;
+            width: 300px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #main {
+            margin-left: 320px;
+        }
         #result {
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Client Camera Stream</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <img id="result" width="640" height="480" />
-    <p id="count">Count: 0</p>
+    <div id="sidebar">
+        <h2>Sidebar</h2>
+        <p>Pose detection and other information will be displayed here.</p>
+    </div>
+    <div id="main">
+        <h1>Client Camera Stream</h1>
+        <video id="video" width="640" height="480" autoplay></video>
+        <img id="result" width="640" height="480" />
+        <p id="count">Count: 0</p>
+    </div>
     <script>
         const video = document.getElementById('video');
         const result = document.getElementById('result');
         const countDisplay = document.getElementById('count');
 
-        // Request access to the camera
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
@@ -30,7 +44,6 @@
                 console.error("Error accessing the camera: ", err);
             });
 
-        // Capture and send the video stream to the server
         video.addEventListener('play', () => {
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
@@ -52,7 +65,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        const imgData = 'data:image/jpeg;base64,' + data.processed_frame;
+                        const imgData = 'data:image/jpeg;base64,' + btoa(data.processed_frame);
                         result.src = imgData;
                         countDisplay.innerText = 'Count: ' + data.count;
                     })
