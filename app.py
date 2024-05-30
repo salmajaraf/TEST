@@ -4,7 +4,7 @@ import time
 import PoseModule as pm
 
 # url = "http://192.168.11.104:4747/video"
-url = "curls1.mp4"
+url = 0
 
 
 # Open the video stream
